@@ -1,7 +1,8 @@
 import sys
 import os
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import classify as classify
+import requests
+import json
 
 
 token="1798461535:AAHeZOMG3V_xhIxyJJL9WbYzDZgS6YDat54"
@@ -9,84 +10,92 @@ token="1798461535:AAHeZOMG3V_xhIxyJJL9WbYzDZgS6YDat54"
 
 def start(bot, update):
     try:
-        name = update.message.from_user.name
-        message = "Hola " + name
+        username=update.message.from_user.name
+        message="Bienvenido "+ username
+        messages="Este es un bot identificador de billetes "  
         update.message.reply_text(message)
-    except Exception as e:
-        print("Error 003 {}".format(e.args[0]))
-
-def help(bot, update):
-    try:
-        username = update.message.from_user.username
-        update.message.reply_text('Hola {}, por favor envia una imagen para clasificarla'.format(username))
-    except Exception as e:
-        print("Error 004 {}".format(e.args[0]))
-
-def analize (bot, update):
-    try:
-        message = "Recibiendo imagen"
-        update.message.reply_text(message)
-        print(message)
-
-        photo_file = bot.getFile(update.message.photo[-1].file_id)
-        id_user = update.message.from_user.id
-        id_file = photo_file.file_id
-        id_analisis = str(id_user) + "-" + str(id_file)
-
-        filename = os.path.join('downloads/', '{}.jpg'.format(id_analisis))
-        photo_file.download(filename)
-        message = "Imagen recibida, analizando, por favor espera unos segundos"
-        update.message.reply_text(message)
-        print(message)
-
-        resultado = classify.Classify.machineLearning(filename)
-        print(resultado)
-        update.message.reply_text(resultado)
-        print("esperando otra imagen...")
-    except Exception as e:
-        print("Error 005 {}".format(e.args[0]))
-
+        update.message.reply_text(messages)
+            
+    except Exception as error:
+        print("Error 001 {}".format(error.args[0]))
 
 def echo(bot, update):
     try:
-        update.message.reply_text(update.message.text)
-        print("Recibiendo texto...")
-        print("esperando por otro texto...")
-        print(update.message.from_user)
-    except Exception as e:
-        print("Error 006 {}".format(e.args[0]))
+        text=update.message.text
+        update.message.reply_text(text)
+    except Exception as error:
+        print("Error 002 {}".format(error.args[0]))
+
+def help(bot, update):
+    try:
+        message="Puedes enviar imagenes a este bot para reconocer el valor de tu billete"
+        update.message.reply_text(message)
+    except Exception as error:
+        print("Error 003 {}".format(error.args[0]))
 
 def error(bot, update, error):
     try:
-        logger.warn('Update "%s" caused error "%s"' % (update, error))
+        print(error)
     except Exception as e:
-        print("Error 007 {}".format(e.args[0]))
+        print("Error 004 {}".format(e.args[0]))
 
+def getImagen(bot, update):
+    try:
+        message="Enviando imagen..."
+        update.message.reply_text(message)
+
+        file= bot.getFile(update.message.photo[-1].file_id)
+        id=file.file_id
+        filename= os.path.join("downloads/","{}.jpg".format(id))
+        file.download(filename)
+        message="Imagen enviada"
+        update.message.reply_text(message)
+        message="Reconociendo billete..."
+        update.message.reply_text(message)                   
+        imagenfile={"myfile":open(filename,'rb')}
+        resultado = requests.post("https://8080-chocolate-goldfish-r32akb8f.ws-us03.gitpod.io/imagen", files=imagenfile)
+        update.message.reply_text(resultado.text)
+        
+    except Exception as error:
+        print("Error 005 {}".format(e.args[0]))
+    
+
+def identificar(bot,filename):
+    try:
+        message="Identificando..."
+        update.message.reply_text(message)       
+        imagenes= {'myfile':filename}
+        
+        resultado = requests.post("https://8080-chocolate-goldfish-r32akb8f.ws-us03.gitpod.io/imagen", myfile=imagenes)
+        billete=resultado.json()
+        items=billete[list(billete.keys())[0]]
+        for i in items:
+            descripcion= i["Respuesta"]
+        message=descripcion
+        update.message.reply_text(message)
+    except Exception as error:
+        print("Error 0 {}".format(e.args[0]))
+        
 def main():
     try:
-        print('ClassifyImagesBot init token')
-
-        updater = Updater(token)
-        dp = updater.dispatcher
-
-        print('ClassifyImagesBot init dispatcher')
-
-        dp.add_handler(CommandHandler("start", start))
-        dp.add_handler(CommandHandler("help", help))
-
+        updater=Updater(token)
+        dp=updater.dispatcher
+        
+        dp.add_handler(CommandHandler("start",start))
+        dp.add_handler(CommandHandler("help",help))
         dp.add_handler(MessageHandler(Filters.text, echo))
-        dp.add_handler(MessageHandler(Filters.photo, analize))
-
+        dp.add_handler(MessageHandler(Filters.photo, getImagen))
         dp.add_error_handler(error)
-
+       
         updater.start_polling()
-        print('ClassifyImagesBot listo')
+        
         updater.idle()
+        print("Bot listo")
     except Exception as e:
-        print("Error 008 {}".format(e.message))
+        print("Error 010 {}".format(e.args[0]))
 
-if __name__ == '__main__':
+if __name__=="__main__":
     try:
         main()
-    except Exception as e:
-        print("Error 009: {}".format(e.args[0]))
+    except Exception as error:
+        print("Error 011 {}".format(e.args[0]))
