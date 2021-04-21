@@ -12,7 +12,7 @@ def start(bot, update):
     try:
         username=update.message.from_user.name
         message="Bienvenido "+ username
-        messages="Este es un bot identificador de billetes "  
+        messages="Este es un bot identificador de billetes y de texto "  
         update.message.reply_text(message)
         update.message.reply_text(messages)
             
@@ -22,13 +22,15 @@ def start(bot, update):
 def echo(bot, update):
     try:
         text=update.message.text
-        update.message.reply_text(text)
+        mensj = {'texto': text}
+        resultado = requests.post("https://8080-azure-tiglon-5p6dxjd6.ws-us03.gitpod.io/parametros", mensj)
+        update.message.reply_text(resultado.text)
     except Exception as error:
         print("Error 002 {}".format(error.args[0]))
 
 def help(bot, update):
     try:
-        message="Puedes enviar imagenes a este bot para reconocer el valor de tu billete"
+        message="Puedes enviar imagenes a este bot para reconocer el valor de tu billete y realizar algunas preguntas sobre estos"
         update.message.reply_text(message)
     except Exception as error:
         print("Error 003 {}".format(error.args[0]))
